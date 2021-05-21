@@ -17,6 +17,7 @@
 #endregion
 
 using System.IO;
+using System.Net;
 using System.Text;
 
 namespace RestSharp.Extensions
@@ -45,18 +46,28 @@ namespace RestSharp.Extensions
         /// <returns>byte[]</returns>
         public static byte[] ReadAsBytes(this Stream input)
         {
-            byte[] buffer = new byte[16 * 1024];
-
-            using (MemoryStream ms = new MemoryStream())
+            try
             {
-                int read;
+                byte[] buffer = new byte[16 * 1024];
 
-                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                using (MemoryStream ms = new MemoryStream())
                 {
-                    ms.Write(buffer, 0, read);
-                }
+                    int read;
 
-                return ms.ToArray();
+                    while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        ms.Write(buffer, 0, read);
+                    }
+
+                    return ms.ToArray();
+                }
+            }
+            catch(WebException)
+            {
+                // Workaround to https://github.com/mono/mono/issues/9511
+                // Mono is failing to read the content of the web request when an error occurs.
+                // Here we catch the exception that occurs in the normal parsing and return an empty response if it fails.
+                return new byte[0];
             }
         }
 
